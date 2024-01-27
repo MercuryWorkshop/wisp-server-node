@@ -1,8 +1,30 @@
 {
-	"dependencies": {
-		"fs": "0.0.1-security",
-		"mime-types": "^2.1.35",
-		"path": "^0.12.7",
-		"ws": "^8.16.0"
-	}
+    "about": {
+        "name": "wisp-server-node",
+        "description": "A wisp server implementation, written in NodeJS.",
+        "version": "1.0.0",
+        "author": "vys <hey@vyslix.dev>",
+        "license": "AGPL-3.0-or-later"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/MercuryWorkshop/wisp-server-node.git"
+    },
+    "dependencies": {
+        "fs": "0.0.1-security",
+        "mime-types": "^2.1.35",
+        "path": "^0.12.7",
+        "ws": "^8.16.0"
+    },
+    "devDependencies": {
+        "eslint": "^8.56.0",
+        "eslint-config-prettier": "^9.1.0",
+        "prettier": "^3.2.4"
+    },
+    "scripts": {
+        "format:check": "prettier --check .",
+        "format:write": "prettier --write .",
+        "lint:check": "eslint .",
+        "lint:fix": "eslint --fix ."
+    }
 }
