@@ -102,13 +102,6 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket|IncomingMessag
                 stream.client.write(wispFrame.payload)
                 stream.buffer--;
 
-                const continuePacket = new DataView(new Uint8Array(9).buffer);
-                continuePacket.setInt8(0, CONNECT_TYPE.CONTINUE)
-                continuePacket.setUint32(1, wispFrame.streamID, true)
-                continuePacket.setUint32(5, stream.buffer, true);
-            
-                ws.send(initialPacket.buffer)
-
                 if (stream.buffer == 0) {
                     stream.buffer = 127;
                     const continuePacket = new DataView(new Uint8Array(9).buffer);
