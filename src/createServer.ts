@@ -1,8 +1,12 @@
 /** Wisp server node!
  * Made by Rafflesia@\MercuryWorkshop
- * All rights reserved until I decide a god damn license for this thing
  * 
- * This implimentation of wisp is sort of really broken so I set the buffer size to max 32bit int, I'm not sure why it doesn't work with lower values
+ * This software is licensed under AGPLv3 &&
+ * You should have a copy of AGPLv3 with this source code
+ * 
+ * This implimentation of wisp is sort of really broken 
+ * so I set the buffer size to max 32bit int, 
+ * I'm not sure why it doesn't work with lower values
  * 
  */
 
