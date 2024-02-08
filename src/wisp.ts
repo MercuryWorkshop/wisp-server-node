@@ -94,7 +94,7 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket|IncomingMessag
             }
             if (wispFrame.type == CONNECT_TYPE.DATA) {
                 if (!connections.has(wispFrame.streamID)) {
-                    close(wispFrame.streamID, 0x41) // 0x41 in the WISP protocol is defined as invalid information
+                    // Fail silently if streamID doesn't exist
                     return;
                 } // I will add better error handling later (I wont)
                 
