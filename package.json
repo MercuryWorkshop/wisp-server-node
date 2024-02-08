@@ -7,8 +7,8 @@
     "build": "tsc",
     "dev": "tsc --watch"
   },
-  "main": "dist/createServer.js",
-	"types": "dist/createServer.d.ts",
+  "main": "dist/wisp.js",
+	"types": "dist/wisp.d.ts",
 	"files": [
 		"dist",
 		"bin.js"
