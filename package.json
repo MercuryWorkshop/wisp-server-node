@@ -1,14 +1,14 @@
 {
   "name": "wisp-server-node",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "commonjs",
   "description": "",
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch"
   },
-  "main": "dist/wisp.js",
-	"types": "dist/wisp.d.ts",
+  "main": "dist/ConnectionHandler.js",
+	"types": "dist/ConnectionHandler.d.ts",
 	"files": [
 		"dist",
 		"bin.js"
