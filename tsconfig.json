@@ -1,0 +1,16 @@
+{
+	"compilerOptions": {
+		"outDir": "dist",
+		"lib": ["ESNext"],
+		"target": "ESNext",
+		"module": "Node16",
+		"moduleResolution": "Node16",
+		"strict": true,
+		"stripInternal": true,
+		"esModuleInterop": true,
+		"declaration": true,
+		"sourceMap": true,
+		"resolveJsonModule": false
+	},
+	"include": ["src"]
+}
