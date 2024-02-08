@@ -72,7 +72,7 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket|IncomingMessag
                 // Initialize and register Socket that will handle this stream
                 const client = new net.Socket();
                 client.connect(port, hostname)
-                connections.set(wispFrame.streamID, {client: client, buffer: 0x7FFFFFFF16})
+                connections.set(wispFrame.streamID, {client: client, buffer: 127})
 
                 // Send Socket's data back to client
                 client.on('data', function(data) {
@@ -101,12 +101,20 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket|IncomingMessag
                 const stream = connections.get(wispFrame.streamID)
                 stream.client.write(wispFrame.payload)
                 stream.buffer--;
+                console.log(`StreamID ${wispFrame.streamID} now has a buffer length of ${stream.buffer}`)
+
+                const continuePacket = new DataView(new Uint8Array(9).buffer);
+                continuePacket.setInt8(0, CONNECT_TYPE.CONTINUE)
+                continuePacket.setUint32(1, wispFrame.streamID, true)
+                continuePacket.setUint32(5, stream.buffer, true);
+            
+                ws.send(initialPacket.buffer)
 
                 if (stream.buffer == 0) {
                     const continuePacket = new DataView(new Uint8Array(9).buffer);
                     continuePacket.setInt8(0, CONNECT_TYPE.CONTINUE)
                     continuePacket.setUint32(1, wispFrame.streamID, true)
-                    continuePacket.setUint32(5, 0x7FFFFFFF16, true);
+                    continuePacket.setUint32(5, 127, true);
                 
                     ws.send(initialPacket.buffer)
                 }
@@ -115,7 +123,7 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket|IncomingMessag
             if (wispFrame.type == CONNECT_TYPE.CLOSE) {
                 // its joever
                 console.log("Client decided to terminate with reason " + new DataView(wispFrame.payload.buffer).getUint8(0));
-                ws.close();
+                (connections.get(wispFrame.streamID).client as Socket).destroy();
                 connections.delete(wispFrame.streamID);
             } 
 
@@ -130,7 +138,7 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket|IncomingMessag
     const initialPacket = new DataView(new Uint8Array(9).buffer);
     initialPacket.setInt8(0, CONNECT_TYPE.CONTINUE)
     initialPacket.setUint32(1, 0, true)
-    initialPacket.setUint32(5, 0x7FFFFFFF16, true);
+    initialPacket.setUint8(5, 127);
 
     ws.send(initialPacket.buffer)
 
