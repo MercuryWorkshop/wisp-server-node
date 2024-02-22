@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 const http = require('node:http');
-const wisp = require('@mercuryworkshop/wisp-server-node');
+const wisp = require('wisp-server-node');
 
 const httpServer = http.createServer();
 
