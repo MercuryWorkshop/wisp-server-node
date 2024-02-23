@@ -1,6 +1,6 @@
 {
   "name": "wisp-server-node",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "type": "commonjs",
   "description": "",
   "scripts": {
@@ -8,16 +8,19 @@
     "dev": "tsc --watch"
   },
   "main": "dist/ConnectionHandler.js",
-	"types": "dist/ConnectionHandler.d.ts",
-	"files": [
-		"dist",
-		"bin.js"
-	],
+  "types": "dist/ConnectionHandler.d.ts",
+  "files": [
+    "dist",
+    "bin.js"
+  ],
   "keywords": [],
   "author": "",
   "license": "AGPL-3.0-only",
   "devDependencies": {
     "@types/ws": "^8.5.10",
     "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "ws": "^8.16.0"
   }
 }
