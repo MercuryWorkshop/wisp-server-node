@@ -5,8 +5,11 @@ const wisp = require('wisp-server-node');
 const httpServer = http.createServer();
 
 httpServer.on('upgrade', (req, socket, head) => {
-	if (req.url.endsWith("/wisp"))
+	// please include thr trailing slash
+	if (req.url.endsWith("/wisp/"))
     	wisp.routeRequest(req,socket,head)
+	else
+		socket.end()
 });
 
 httpServer.on('listening', () => {
