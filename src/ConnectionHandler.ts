@@ -32,7 +32,11 @@ export async function routeRequest(
 
   ws.on("message", (data, isBinary) => {
     try {
-      // Someone add safety checks here later
+      // Ensure that the incoming data is a valid WebSocket message
+      if (!Buffer.isBuffer(data) && !(data instanceof ArrayBuffer)) {
+        console.error("Invalid WebSocket message data");
+        return;
+      }
       const wispFrame = FrameParsers.wispFrameParser(
         Buffer.from(data as Buffer)
       ); // I'm like 50% sure this is always a buffer but I'm just making sure
