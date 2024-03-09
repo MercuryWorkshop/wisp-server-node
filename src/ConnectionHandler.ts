@@ -2,7 +2,11 @@ import { STREAM_TYPE, CONNECT_TYPE, WispFrame } from "./Types";
 import WebSocket, { WebSocketServer } from "ws";
 import net, { Socket } from "node:net";
 import { IncomingMessage } from "node:http";
-import FrameParsers, { continuePacketMaker, dataPacketMaker } from "./Packets";
+import FrameParsers, {
+  continuePacketMaker,
+  dataPacketMaker,
+  maxSize,
+} from "./Packets";
 
 const wss = new WebSocket.Server({ noServer: true }); // This is for handling upgrades incase the server doesn't handle them before passing it to us
 
@@ -37,9 +41,24 @@ export async function routeRequest(
         console.error("Invalid WebSocket message data");
         return;
       }
+
       const wispFrame = FrameParsers.wispFrameParser(
         Buffer.from(data as Buffer)
-      ); // I'm like 50% sure this is always a buffer but I'm just making sure
+      );
+
+      // Check if the packet is of the correct size
+      const payloadSizeInBits = wispFrame.payload.length * 8;
+      const expectedSizeInBits = maxSize[wispFrame.type];
+
+      if (
+        expectedSizeInBits !== undefined &&
+        payloadSizeInBits > expectedSizeInBits
+      ) {
+        // If the size is incorrect, close the connection
+        console.error("Invalid packet size. Closing connection.");
+        ws.close();
+        return;
+      }
 
       // Routing
       if (wispFrame.type == CONNECT_TYPE.CONNECT) {
@@ -66,11 +85,6 @@ export async function routeRequest(
         });
       }
       if (wispFrame.type == CONNECT_TYPE.DATA) {
-        if (!connections.has(wispFrame.streamID)) {
-          // Fail silently if streamID doesn't exist
-          return;
-        } // I will add better error handling later (I wont)
-
         const stream = connections.get(wispFrame.streamID);
         stream.client.write(wispFrame.payload);
         stream.buffer--;

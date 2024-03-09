@@ -54,10 +54,18 @@ export function dataPacketMaker(wispFrame: WispFrame, data: Buffer) {
   return Buffer.concat([Buffer.from(dataPacketHeader.buffer), data]);
 }
 
+export const maxSize: { [key: number]: number } = {
+  [CONNECT_TYPE.CONTINUE]: 8 + 32 + 32, // Continue packet size: 8 + 32 + 32 bits
+  [CONNECT_TYPE.CLOSE]: 8 + 32 + 8, // Close packet size: 8 + 32 + 8 bits
+  [CONNECT_TYPE.CONNECT]: 8 + 32 + 8 + 16 + 2024, // Connect packet size: 8 + 32 + 8 + 16 + max FQDN length (2024 bits)
+  [CONNECT_TYPE.DATA]: Infinity, // Data packets can be of any size
+};
+
 export default {
   wispFrameParser,
   connectPacketParser,
   continuePacketMaker,
   closePacketMaker,
   dataPacketMaker,
+  maxSize,
 };
