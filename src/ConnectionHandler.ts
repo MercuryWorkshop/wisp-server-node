@@ -48,17 +48,16 @@ export async function routeRequest(
       );
 
       // Check if the packet is of the correct size
-      const payloadSizeInBits = wispFrame.payload.length * 8;
-      const expectedMaxSizeInBits = maxSize[wispFrame.type];
-      const expectedMinSizeInBits = minSize[wispFrame.type];
+      const payloadSize = wispFrame.payload.length * 8;
+      const expectedMaxSize = maxSize[wispFrame.type];
+      const expectedMinSize = minSize[wispFrame.type];
 
       if (
-        expectedMaxSizeInBits !== undefined &&
-        expectedMinSizeInBits !== undefined &&
-        (payloadSizeInBits > expectedMaxSizeInBits ||
-          payloadSizeInBits < expectedMinSizeInBits)
+        expectedMaxSize !== undefined &&
+        expectedMinSize !== undefined &&
+        (payloadSize > expectedMaxSize || payloadSize < expectedMinSize)
       ) {
-        // 3. If the size is incorrect, close the connection
+        // If the size is incorrect, close the connection
         console.error("Invalid packet size. Closing connection.");
         ws.close();
         return;
