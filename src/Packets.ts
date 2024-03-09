@@ -61,6 +61,13 @@ export const maxSize: { [key: number]: number } = {
   [CONNECT_TYPE.DATA]: Infinity, // Data packets can be of any size
 };
 
+export const minSize: { [key: number]: number } = {
+  [CONNECT_TYPE.CONTINUE]: 8 + 32 + 32, // Continue packet size: 8 + 32 + 32 bits
+  [CONNECT_TYPE.CLOSE]: 8 + 32 + 8, // Close packet size: 8 + 32 + 8 bits
+  [CONNECT_TYPE.CONNECT]: 8 + 32 + 8 + 16, // Connect packet size: 8 + 32 + 8 + 16 bits (minimum, without hostname)
+  [CONNECT_TYPE.DATA]: 0, // Data packets can be of any size
+};
+
 export default {
   wispFrameParser,
   connectPacketParser,
@@ -68,4 +75,5 @@ export default {
   closePacketMaker,
   dataPacketMaker,
   maxSize,
+  minSize,
 };

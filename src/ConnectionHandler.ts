@@ -6,6 +6,7 @@ import FrameParsers, {
   continuePacketMaker,
   dataPacketMaker,
   maxSize,
+  minSize,
 } from "./Packets";
 
 const wss = new WebSocket.Server({ noServer: true }); // This is for handling upgrades incase the server doesn't handle them before passing it to us
@@ -48,13 +49,16 @@ export async function routeRequest(
 
       // Check if the packet is of the correct size
       const payloadSizeInBits = wispFrame.payload.length * 8;
-      const expectedSizeInBits = maxSize[wispFrame.type];
+      const expectedMaxSizeInBits = maxSize[wispFrame.type];
+      const expectedMinSizeInBits = minSize[wispFrame.type];
 
       if (
-        expectedSizeInBits !== undefined &&
-        payloadSizeInBits > expectedSizeInBits
+        expectedMaxSizeInBits !== undefined &&
+        expectedMinSizeInBits !== undefined &&
+        (payloadSizeInBits > expectedMaxSizeInBits ||
+          payloadSizeInBits < expectedMinSizeInBits)
       ) {
-        // If the size is incorrect, close the connection
+        // 3. If the size is incorrect, close the connection
         console.error("Invalid packet size. Closing connection.");
         ws.close();
         return;
