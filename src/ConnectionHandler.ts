@@ -5,8 +5,6 @@ import { IncomingMessage } from "node:http";
 import FrameParsers, {
   continuePacketMaker,
   dataPacketMaker,
-  maxSize,
-  minSize,
 } from "./Packets";
 
 const wss = new WebSocket.Server({ noServer: true }); // This is for handling upgrades incase the server doesn't handle them before passing it to us
@@ -46,30 +44,6 @@ export async function routeRequest(
       const wispFrame = FrameParsers.wispFrameParser(
         Buffer.from(data as Buffer)
       );
-
-      // Check if the packet is of the correct size
-      const payloadSize = wispFrame.payload.length * 8;
-      const expectedMinSize = minSize[wispFrame.type] + 8 + 32;
-      const expectedMaxSize = maxSize[wispFrame.type];
-
-      // Minimum packet size check
-      if (payloadSize < 8 + 32) {
-        console.error("Invalid packet size. Closing connection.");
-        ws.close();
-        return;
-      }
-
-      // Maximum packet size check
-      if (
-        expectedMaxSize !== undefined &&
-        expectedMinSize !== undefined &&
-        (payloadSize > expectedMaxSize || payloadSize < expectedMinSize)
-      ) {
-        // If the size is incorrect, close the connection
-        console.error("Invalid packet size. Closing connection.");
-        ws.close();
-        return;
-      }
 
       // Routing
       if (wispFrame.type == CONNECT_TYPE.CONNECT) {
@@ -116,7 +90,14 @@ export async function routeRequest(
       }
     } catch (e) {
       ws.close(); // something went SUPER wrong, like its probably not even a wisp connection
+      console.error("WISP incoming message handler error: ");
       console.error(e);
+
+      // cleanup
+      for (const { client } of connections.values()) {
+        client.destroy();
+      }
+      connections.clear();
     }
   });
 
