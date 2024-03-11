@@ -49,8 +49,8 @@ export async function routeRequest(
 
       // Check if the packet is of the correct size
       const payloadSize = wispFrame.payload.length * 8;
+      const expectedMinSize = minSize[wispFrame.type] + 8 + 32;
       const expectedMaxSize = maxSize[wispFrame.type];
-      const expectedMinSize = minSize[wispFrame.type];
 
       // Minimum packet size check
       if (payloadSize < 8 + 32) {
