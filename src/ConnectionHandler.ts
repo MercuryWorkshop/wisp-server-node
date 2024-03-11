@@ -52,6 +52,14 @@ export async function routeRequest(
       const expectedMaxSize = maxSize[wispFrame.type];
       const expectedMinSize = minSize[wispFrame.type];
 
+      // Minimum packet size check
+      if (payloadSize < 8 + 32) {
+        console.error("Invalid packet size. Closing connection.");
+        ws.close();
+        return;
+      }
+
+      // Maximum packet size check
       if (
         expectedMaxSize !== undefined &&
         expectedMinSize !== undefined &&
