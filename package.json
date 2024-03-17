@@ -1,6 +1,6 @@
 {
     "name": "wisp-server-node",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "type": "commonjs",
     "description": "",
     "scripts": {
