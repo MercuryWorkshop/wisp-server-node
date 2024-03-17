@@ -3,14 +3,21 @@ import WebSocket, { WebSocketServer } from "ws";
 import net, { Socket } from "node:net";
 import { IncomingMessage } from "node:http";
 import FrameParsers, { continuePacketMaker, dataPacketMaker } from "./Packets";
+import { handleWsProxy } from "./wsproxy";
 
 const wss = new WebSocket.Server({ noServer: true }); // This is for handling upgrades incase the server doesn't handle them before passing it to us
 
 // Accepts either routeRequest(ws) or routeRequest(request, socket, head) like bare
 export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMessage, socket?: Socket, head?: Buffer) {
-    if (!(wsOrIncomingMessage instanceof WebSocket) && socket && head) {
+    
+    if (!(wsOrIncomingMessage instanceof WebSocket) && socket && head) { // Wsproxy is handled here because if we're just passed the websocket then we don't even know it's URL
+
         // Compatibility with bare like "handle upgrade" syntax
         wss.handleUpgrade(wsOrIncomingMessage, socket as Socket, head, (ws: WebSocket): void => {
+            if (!wsOrIncomingMessage.url?.endsWith("/")) { // if a URL ends with / then its not a wsproxy connection, its wisp
+                handleWsProxy(ws, wsOrIncomingMessage.url!)
+                return;
+            }
             routeRequest(ws);
         });
         return;

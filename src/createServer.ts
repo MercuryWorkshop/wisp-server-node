@@ -1,10 +1,11 @@
 import { WebSocketServer } from "ws";
 import wisp from "./ConnectionHandler";
+import http from "node:http"
+import {Socket} from "node:net"
 
-const wss = new WebSocketServer({
-    port: 3000,
-});
 
-wss.on("connection", (ws) => {
-    wisp.routeRequest(ws);
-});
+const httpServer = http.createServer().listen(3000)
+
+httpServer.on('upgrade', (req, socket, head) => {
+    wisp.routeRequest(req, socket as Socket, head);
+})
