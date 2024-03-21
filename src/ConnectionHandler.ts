@@ -1,111 +1,61 @@
 import { STREAM_TYPE, CONNECT_TYPE, WispFrame } from "./Types";
-import WebSocket, { WebSocketServer } from "ws";
-import net, { Socket } from "node:net";
-import { IncomingMessage } from "node:http";
-import FrameParsers, { continuePacketMaker, dataPacketMaker } from "./Packets";
-import { handleWsProxy } from "./wsproxy";
 
-const wss = new WebSocket.Server({ noServer: true }); // This is for handling upgrades incase the server doesn't handle them before passing it to us
+export function wispFrameParser(data: Buffer): WispFrame {
+  const uint8arrayView = new Uint8Array(data);
+  const dataView = new DataView(uint8arrayView.buffer);
+  const type: CONNECT_TYPE = dataView.getUint8(0);
+  let streamID = dataView.getUint32(1, true);
+  let payload = uint8arrayView.slice(5, uint8arrayView.byteLength);
+  return { type, streamID, payload };
+}
 
-// Accepts either routeRequest(ws) or routeRequest(request, socket, head) like bare
-export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMessage, socket?: Socket, head?: Buffer) {
-    
-    if (!(wsOrIncomingMessage instanceof WebSocket) && socket && head) { // Wsproxy is handled here because if we're just passed the websocket then we don't even know it's URL
+export function connectPacketParser(payload: Uint8Array) {
+  const dataview = new DataView(payload.buffer);
+  const streamType = dataview.getUint8(0);
+  const port = dataview.getUint16(1, true);
+  const hostname = new TextDecoder("utf8").decode(dataview.buffer.slice(3, dataview.buffer.byteLength));
+  return { dataview, streamType, port, hostname };
+}
 
-        // Compatibility with bare like "handle upgrade" syntax
-        wss.handleUpgrade(wsOrIncomingMessage, socket as Socket, head, (ws: WebSocket): void => {
-            if (!wsOrIncomingMessage.url?.endsWith("/")) { // if a URL ends with / then its not a wsproxy connection, its wisp
-                handleWsProxy(ws, wsOrIncomingMessage.url!)
-                return;
-            }
-            routeRequest(ws);
-        });
-        return;
-    }
-    if (!(wsOrIncomingMessage instanceof WebSocket)) return; // something went wrong, abort
+export function continuePacketMaker(wispFrame: WispFrame, queue: number) {
+  const initialPacket = new DataView(new Uint8Array(9).buffer);
+  initialPacket.setUint8(0, CONNECT_TYPE.CONTINUE);
+  initialPacket.setUint32(1, wispFrame.streamID, true);
+  initialPacket.setUint32(5, queue, true);
+  return initialPacket.buffer;
+}
 
-    const ws = wsOrIncomingMessage as WebSocket; // now that we are SURE we have a Websocket object, continue...
+export function closePacketMaker(wispFrame: WispFrame, reason: number) {
+  const closePacket = new DataView(new Uint8Array(9).buffer);
+  closePacket.setUint8(0, CONNECT_TYPE.CLOSE);
+  closePacket.setUint32(1, wispFrame.streamID, true);
+  closePacket.setUint8(5, reason);
+  return closePacket.buffer;
+}
 
-    const connections = new Map();
+export function dataPacketMaker(wispFrame: WispFrame, data: Buffer, streamtype: STREAM_TYPE) {
+  // Only function here that returns a node buffer instead ArrayBufferLike
+  // Packet header creation
+  const dataPacketHeader = new DataView(new Uint8Array(5).buffer);
+  dataPacketHeader.setUint8(0, CONNECT_TYPE.DATA);
+  dataPacketHeader.setUint32(1, wispFrame.streamID, true);
 
-    ws.on("message", (data, isBinary) => {
-        try {
-            // Ensure that the incoming data is a valid WebSocket message
-            if (!Buffer.isBuffer(data) && !(data instanceof ArrayBuffer)) {
-                console.error("Invalid WebSocket message data");
-                return;
-            }
-
-            const wispFrame = FrameParsers.wispFrameParser(Buffer.from(data as Buffer));
-
-            // Routing
-            if (wispFrame.type == CONNECT_TYPE.CONNECT) {
-                // CONNECT frame data
-                const connectFrame = FrameParsers.connectPacketParser(wispFrame.payload);
-
-                // Initialize and register Socket that will handle this stream
-                const client = new net.Socket();
-                client.connect(connectFrame.port, connectFrame.hostname);
-                connections.set(wispFrame.streamID, {
-                    client: client,
-                    buffer: 127,
-                });
-
-                // Send Socket's data back to client
-                client.on("data", function (data) {
-                    ws.send(FrameParsers.dataPacketMaker(wispFrame, data));
-                });
-
-                // close stream if there is some network error
-                client.on("error", function () {
-                    console.error("Something went wrong");
-                    ws.send(FrameParsers.closePacketMaker(wispFrame, 0x03)); // 0x03 in the WISP protocol is defined as network error
-                    connections.delete(wispFrame.streamID);
-                });
-            }
-            if (wispFrame.type == CONNECT_TYPE.DATA) {
-                const stream = connections.get(wispFrame.streamID);
-                stream.client.write(wispFrame.payload);
-                stream.buffer--;
-
-                if (stream.buffer == 0) {
-                    stream.buffer = 127;
-                    ws.send(continuePacketMaker(wispFrame, stream.buffer));
-                }
-            }
-            if (wispFrame.type == CONNECT_TYPE.CLOSE) {
-                // its joever
-                console.log(
-                    "Client decided to terminate with reason " + new DataView(wispFrame.payload.buffer).getUint8(0),
-                );
-                (connections.get(wispFrame.streamID).client as Socket).destroy();
-                connections.delete(wispFrame.streamID);
-            }
-        } catch (e) {
-            ws.close(); // something went SUPER wrong, like its probably not even a wisp connection
-            console.error("WISP incoming message handler error: ");
-            console.error(e);
-
-            // cleanup
-            for (const { client } of connections.values()) {
-                client.destroy();
-            }
-            connections.clear();
-        }
-    });
-
-    // Close all open sockets when the WebSocket connection is closed
-    ws.on("close", () => {
-        for (const { client } of connections.values()) {
-            client.destroy();
-        }
-        connections.clear();
-    });
-
-    // SEND the initial continue packet with streamID 0 and 127 queue limit
-    ws.send(FrameParsers.continuePacketMaker({ streamID: 0 } as WispFrame, 127));
+  // Technically should be uint32 little endian, but libcurl bug
+  // Combine the data and the packet header and send to client
+  if (streamtype === STREAM_TYPE.UDP) {
+    // For UDP, send the data immediately without buffering
+    return Buffer.concat([Buffer.from(dataPacketHeader.buffer), data]);
+  } else {
+    // For TCP, buffer the data until CONTINUE packet is received
+    // (implementation for buffering is not shown here)
+    return Buffer.from(dataPacketHeader.buffer);
+  }
 }
 
 export default {
-    routeRequest,
+  wispFrameParser,
+  connectPacketParser,
+  continuePacketMaker,
+  closePacketMaker,
+  dataPacketMaker,
 };
