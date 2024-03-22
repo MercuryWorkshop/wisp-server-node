@@ -5,6 +5,7 @@ import dgram from "node:dgram";
 import { IncomingMessage } from "node:http";
 import FrameParsers, { continuePacketMaker, dataPacketMaker } from "./Packets";
 import { handleWsProxy } from "./wsproxy";
+import dns from "node:dns/promises"
 
 const wss = new WebSocket.Server({ noServer: true }); // This is for handling upgrades incase the server doesn't handle them before passing it to us
 
@@ -27,7 +28,7 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
 
     const connections = new Map();
 
-    ws.on("message", (data, isBinary) => {
+    ws.on("message", async (data, isBinary) => {
         try {
             // Ensure that the incoming data is a valid WebSocket message
             if (!Buffer.isBuffer(data) && !(data instanceof ArrayBuffer)) {
@@ -63,32 +64,46 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
                         connections.delete(wispFrame.streamID);
                     });
                 } else if (connectFrame.streamType === STREAM_TYPE.UDP) {
+                    let iplevel = net.isIP(connectFrame.hostname); // Can be 0: DNS NAME, 4: IPv4, 6: IPv6
+                    let host = connectFrame.hostname;
+                    if (iplevel === 0) { // is DNS
+                        try {
+                            host = (await dns.resolve(connectFrame.hostname))[0];
+                            iplevel = net.isIP(host); // can't be 0 now
+                        } catch (e) {
+                            console.error("Failure while trying to resolve hostname " + connectFrame.hostname + " with error: " + e);
+                            return; // we're done here, ignore doing anything to this message now.
+                        }
+
+                    }
+                    
+                    // iplevel is now guaranteed to be 6 or 4, fingers crossed, so we can define the UDP type now
+                    if (iplevel != 4 && iplevel != 6) {
+                        return; // something went wrong.. neither ipv4 nor ipv6
+                    }
                     // Create a new UDP socket
-                    const client = dgram.createSocket(connectFrame.hostname.includes(':') ? 'udp6' : 'udp4');
-
+                    const client = dgram.createSocket(iplevel === 6 ? "udp6": "udp4");
+                    
                     // Bind the UDP socket to a random available port
-                    client.bind(() => {
-                        const address = client.address();
-                        console.log(`UDP socket bound to ${address.address}:${address.port}`);
+                    client.connect(connectFrame.port, connectFrame.hostname)
 
-                        // Handle incoming UDP data
-                        client.on('message', (data, rinfo) => {
-                            ws.send(FrameParsers.dataPacketMaker(wispFrame, data));
-                        });
+                    // Handle incoming UDP data
+                    client.on('message', (data, rinfo) => {
+                        ws.send(FrameParsers.dataPacketMaker(wispFrame, data));
+                    });
 
-                        // Handle errors
-                        client.on('error', (err) => {
-                            console.error('UDP error:', err);
-                            ws.send(FrameParsers.closePacketMaker(wispFrame, 0x03));
-                            connections.delete(wispFrame.streamID);
-                            client.close();
-                        });
+                    // Handle errors
+                    client.on('error', (err) => {
+                        console.error('UDP error:', err);
+                        ws.send(FrameParsers.closePacketMaker(wispFrame, 0x03));
+                        connections.delete(wispFrame.streamID);
+                        client.close();
+                    });
 
-                        // Store the UDP socket in the connections map
-                        connections.set(wispFrame.streamID, {
-                            client,
-                            buffer: 127,
-                        });
+                    // Store the UDP socket in the connections map
+                    connections.set(wispFrame.streamID, {
+                        client,
+                        buffer: 127,
                     });
                 }
             }
@@ -103,20 +118,15 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
                         ws.send(continuePacketMaker(wispFrame, stream.buffer));
                     }
                 } else if (stream && stream.client instanceof dgram.Socket) {
-                    // Send UDP data
-                    const connectFrame = FrameParsers.connectPacketParser(wispFrame.payload);
-                    if (connectFrame.port > 0 && connectFrame.port < 65536) {
-                        stream.client.send(wispFrame.payload, connectFrame.port, connectFrame.hostname, (err: Error | null) => {
-                            if (err) {
-                                console.error('UDP send error:', err);
-                                ws.send(FrameParsers.closePacketMaker(wispFrame, 0x03));
-                                stream.client.close();
-                                connections.delete(wispFrame.streamID);
-                            }
-                        });
-                    } else {
-                        console.error(`Invalid port number: ${connectFrame.port}`);
-                    }
+                    stream.client.send(wispFrame.payload, (err: Error | null) => {
+                        if (err) {
+                            console.error('UDP send error:', err);
+                            ws.send(FrameParsers.closePacketMaker(wispFrame, 0x03));
+                            stream.client.close();
+                            connections.delete(wispFrame.streamID);
+                        }
+                    });
+
                 }
             }
             if (wispFrame.type === CONNECT_TYPE.CLOSE) {
