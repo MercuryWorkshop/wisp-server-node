@@ -64,7 +64,7 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
                     });
                 } else if (connectFrame.streamType === STREAM_TYPE.UDP) {
                     // Create a new UDP socket
-                    const client = dgram.createSocket('udp4');
+                    const client = dgram.createSocket(connectFrame.hostname.includes(':') ? 'udp6' : 'udp4');
 
                     // Bind the UDP socket to a random available port
                     client.bind(() => {
@@ -106,7 +106,14 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
                     // Send UDP data
                     const connectFrame = FrameParsers.connectPacketParser(wispFrame.payload);
                     if (connectFrame.port > 0 && connectFrame.port < 65536) {
-                        stream.client.send(wispFrame.payload, connectFrame.port, connectFrame.hostname);
+                        stream.client.send(wispFrame.payload, connectFrame.port, connectFrame.hostname, (err: Error | null) => {
+                            if (err) {
+                                console.error('UDP send error:', err);
+                                ws.send(FrameParsers.closePacketMaker(wispFrame, 0x03));
+                                stream.client.close();
+                                connections.delete(wispFrame.streamID);
+                            }
+                        });
                     } else {
                         console.error(`Invalid port number: ${connectFrame.port}`);
                     }
