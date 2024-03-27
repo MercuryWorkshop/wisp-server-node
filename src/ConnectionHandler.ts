@@ -50,9 +50,6 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
                     const client = new net.Socket();
                     client.connect(connectFrame.port, connectFrame.hostname);
 
-                    // Log connection information
-                    console.log(`TCP connection established to port ${connectFrame.port}`);
-
                     connections.set(wispFrame.streamID, {
                         client: client,
                         buffer: 127,
@@ -90,9 +87,6 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
 
                     // Create a new UDP socket
                     const client = dgram.createSocket(iplevel === 6 ? "udp6" : "udp4");
-
-                    // Log connection information
-                    console.log(`UDP connection established to port ${connectFrame.port}`);
 
                     // Handle incoming UDP data
                     client.on('message', (data, rinfo) => {
