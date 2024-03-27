@@ -5,23 +5,25 @@ import dgram from "node:dgram";
 import { IncomingMessage } from "node:http";
 import FrameParsers, { continuePacketMaker, dataPacketMaker } from "./Packets";
 import { handleWsProxy } from "./wsproxy";
-import dns from "node:dns/promises"
+import dns from "node:dns/promises";
 
-const wss = new WebSocket.Server({ noServer: true }); // This is for handling upgrades incase the server doesn't handle them before passing it to us
+const wss = new WebSocket.Server({ noServer: true });
 
 // Accepts either routeRequest(ws) or routeRequest(request, socket, head) like bare
 export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMessage, socket?: Socket, head?: Buffer) {
-    if (!(wsOrIncomingMessage instanceof WebSocket) && socket && head) { // Wsproxy is handled here because if we're just passed the websocket then we don't even know it's URL
+    if (!(wsOrIncomingMessage instanceof WebSocket) && socket && head) {
+        // Wsproxy is handled here because if we're just passed the websocket then we don't even know it's URL
         // Compatibility with bare like "handle upgrade" syntax
         wss.handleUpgrade(wsOrIncomingMessage, socket as Socket, head, (ws: WebSocket): void => {
             if (!wsOrIncomingMessage.url?.endsWith("/")) { // if a URL ends with / then its not a wsproxy connection, its wisp
-                handleWsProxy(ws, wsOrIncomingMessage.url!)
+                handleWsProxy(ws, wsOrIncomingMessage.url!);
                 return;
             }
             routeRequest(ws);
         });
         return;
     }
+
     if (!(wsOrIncomingMessage instanceof WebSocket)) return; // something went wrong, abort
 
     const ws = wsOrIncomingMessage as WebSocket; // now that we are SURE we have a Websocket object, continue...
@@ -47,6 +49,10 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
                     // Initialize and register Socket that will handle this stream
                     const client = new net.Socket();
                     client.connect(connectFrame.port, connectFrame.hostname);
+
+                    // Log connection information
+                    console.log(`TCP connection established to port ${connectFrame.port}`);
+
                     connections.set(wispFrame.streamID, {
                         client: client,
                         buffer: 127,
@@ -57,7 +63,7 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
                         ws.send(FrameParsers.dataPacketMaker(wispFrame, data));
                     });
 
-                    // close stream if there is some network error
+                    // Close stream if there is some network error
                     client.on("error", function () {
                         console.error("Something went wrong");
                         ws.send(FrameParsers.closePacketMaker(wispFrame, 0x03)); // 0x03 in the WISP protocol is defined as network error
@@ -66,6 +72,7 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
                 } else if (connectFrame.streamType === STREAM_TYPE.UDP) {
                     let iplevel = net.isIP(connectFrame.hostname); // Can be 0: DNS NAME, 4: IPv4, 6: IPv6
                     let host = connectFrame.hostname;
+
                     if (iplevel === 0) { // is DNS
                         try {
                             host = (await dns.resolve(connectFrame.hostname))[0];
@@ -74,18 +81,18 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
                             console.error("Failure while trying to resolve hostname " + connectFrame.hostname + " with error: " + e);
                             return; // we're done here, ignore doing anything to this message now.
                         }
-
                     }
-                    
+
                     // iplevel is now guaranteed to be 6 or 4, fingers crossed, so we can define the UDP type now
                     if (iplevel != 4 && iplevel != 6) {
                         return; // something went wrong.. neither ipv4 nor ipv6
                     }
+
                     // Create a new UDP socket
-                    const client = dgram.createSocket(iplevel === 6 ? "udp6": "udp4");
-                    
-                    // Bind the UDP socket to a random available port
-                    client.connect(connectFrame.port, connectFrame.hostname)
+                    const client = dgram.createSocket(iplevel === 6 ? "udp6" : "udp4");
+
+                    // Log connection information
+                    console.log(`UDP connection established to port ${connectFrame.port}`);
 
                     // Handle incoming UDP data
                     client.on('message', (data, rinfo) => {
@@ -100,25 +107,27 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
                         client.close();
                     });
 
-                    // Store the UDP socket in the connections map
+                    // Store the UDP socket and connectFrame in the connections map
                     connections.set(wispFrame.streamID, {
                         client,
                         buffer: 127,
+                        connectFrame: connectFrame // Store the connectFrame object
                     });
                 }
             }
+
             if (wispFrame.type === CONNECT_TYPE.DATA) {
                 const stream = connections.get(wispFrame.streamID);
                 if (stream && stream.client instanceof net.Socket) {
                     stream.client.write(wispFrame.payload);
                     stream.buffer--;
-
                     if (stream.buffer === 0) {
                         stream.buffer = 127;
                         ws.send(continuePacketMaker(wispFrame, stream.buffer));
                     }
                 } else if (stream && stream.client instanceof dgram.Socket) {
-                    stream.client.send(wispFrame.payload, (err: Error | null) => {
+                    const connectFrame = stream.connectFrame; // Retrieve the connectFrame object
+                    stream.client.send(wispFrame.payload, connectFrame.port, connectFrame.hostname, (err: Error | null) => {
                         if (err) {
                             console.error('UDP send error:', err);
                             ws.send(FrameParsers.closePacketMaker(wispFrame, 0x03));
@@ -126,9 +135,9 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
                             connections.delete(wispFrame.streamID);
                         }
                     });
-
                 }
             }
+
             if (wispFrame.type === CONNECT_TYPE.CLOSE) {
                 // its joever
                 console.log(
@@ -160,7 +169,8 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
     });
 
     // Close all open sockets when the WebSocket connection is closed
-    ws.on("close", () => {
+    ws.on("close", (code, reason) => {
+        console.log(`WebSocket connection closed with code ${code} and reason: ${reason}`);
         for (const { client } of connections.values()) {
             if (client instanceof net.Socket) {
                 client.destroy();
@@ -177,4 +187,4 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
 
 export default {
     routeRequest,
-}
+};
