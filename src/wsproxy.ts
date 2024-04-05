@@ -1,6 +1,6 @@
 import { IncomingMessage } from "node:http";
 import WebSocket from "ws";
-import {Socket} from "node:net"
+import { Socket } from "node:net"
 
 export async function handleWsProxy(ws: WebSocket, url: String) {
     const client = new Socket();

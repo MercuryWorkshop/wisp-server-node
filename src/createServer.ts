@@ -1,8 +1,7 @@
 import { WebSocketServer } from "ws";
 import wisp from "./ConnectionHandler";
 import http from "node:http"
-import {Socket} from "node:net"
-
+import { Socket } from "node:net"
 
 const httpServer = http.createServer().listen(3000)
 
