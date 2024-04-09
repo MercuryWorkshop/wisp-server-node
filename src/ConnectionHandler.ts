@@ -140,8 +140,6 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
                     console.log(
                         "Client decided to terminate with reason " + new DataView(wispFrame.payload.buffer).getUint8(0),
                     );
-                } else {
-                    console.log(" i aint loggin this shiz")
                 }
                 const stream = connections.get(wispFrame.streamID);
                 if (stream && stream.client instanceof net.Socket) {
@@ -170,7 +168,9 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
 
     // Close all open sockets when the WebSocket connection is closed
     ws.on("close", (code, reason) => {
-        console.log(`WebSocket connection closed with code ${code} and reason: ${reason}`);
+        if (logging) {
+            console.log(`WebSocket connection closed with code ${code} and reason: ${reason}`);
+        }
         for (const { client } of connections.values()) {
             if (client instanceof net.Socket) {
                 client.destroy();
