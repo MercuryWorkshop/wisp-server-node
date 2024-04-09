@@ -137,7 +137,6 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
                                 console.error('UDP send error:', err);
                             }
                             ws.send(FrameParsers.closePacketMaker(wispFrame, 0x03));
-                            console.log(stream.client)
                             //@ts-expect-error
                             if (!err.errno == -13) {
                                 stream.client.close();
