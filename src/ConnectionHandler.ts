@@ -1,4 +1,4 @@
-import { STREAM_TYPE, CONNECT_TYPE, WispFrame } from "./Types";
+import { STREAM_TYPE, CONNECT_TYPE, WispFrame, WispOptions } from "./Types";
 import WebSocket, { WebSocketServer } from "ws";
 import net, { Socket } from "node:net";
 import dgram from "node:dgram";
@@ -10,7 +10,9 @@ import dns from "node:dns/promises";
 const wss = new WebSocket.Server({ noServer: true });
 
 // Accepts either routeRequest(ws) or routeRequest(request, socket, head) like bare
-export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMessage, socket?: Socket, head?: Buffer) {
+export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMessage, socket?: Socket, head?: Buffer, options: WispOptions = {}) {
+    const { logging = false } = options;
+
     if (!(wsOrIncomingMessage instanceof WebSocket) && socket && head) {
         // Wsproxy is handled here because if we're just passed the websocket then we don't even know it's URL
         // Compatibility with bare like "handle upgrade" syntax
@@ -19,7 +21,7 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
                 handleWsProxy(ws, wsOrIncomingMessage.url!);
                 return;
             }
-            routeRequest(ws);
+            routeRequest(ws, undefined, undefined, { logging: logging });
         });
         return;
     }
@@ -134,9 +136,13 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
 
             if (wispFrame.type === CONNECT_TYPE.CLOSE) {
                 // its joever
-                console.log(
-                    "Client decided to terminate with reason " + new DataView(wispFrame.payload.buffer).getUint8(0),
-                );
+                if (logging) {
+                    console.log(
+                        "Client decided to terminate with reason " + new DataView(wispFrame.payload.buffer).getUint8(0),
+                    );
+                } else {
+                    console.log(" i aint loggin this shiz")
+                }
                 const stream = connections.get(wispFrame.streamID);
                 if (stream && stream.client instanceof net.Socket) {
                     stream.client.destroy();

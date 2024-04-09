@@ -13,3 +13,6 @@ export enum STREAM_TYPE {
     TCP = 0x01,
     UDP = 0x02,
 }
+export type WispOptions = {
+    logging?: boolean;
+} 
