@@ -11,7 +11,7 @@ const wss = new WebSocket.Server({ noServer: true });
 
 // Accepts either routeRequest(ws) or routeRequest(request, socket, head) like bare
 export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMessage, socket?: Socket, head?: Buffer, options: WispOptions = {}) {
-    const { logging = false } = options;
+    const { logging = true } = options;
 
     if (!(wsOrIncomingMessage instanceof WebSocket) && socket && head) {
         // Wsproxy is handled here because if we're just passed the websocket then we don't even know it's URL
@@ -36,7 +36,9 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
         try {
             // Ensure that the incoming data is a valid WebSocket message
             if (!Buffer.isBuffer(data) && !(data instanceof ArrayBuffer)) {
-                console.error("Invalid WebSocket message data");
+                if (logging) {
+                    console.error("Invalid WebSocket message data");
+                }
                 return;
             }
 
@@ -64,7 +66,9 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
 
                     // Close stream if there is some network error
                     client.on("error", function () {
-                        console.error("Something went wrong");
+                        if (logging) {
+                            console.error("Something went wrong");
+                        }
                         ws.send(FrameParsers.closePacketMaker(wispFrame, 0x03)); // 0x03 in the WISP protocol is defined as network error
                         connections.delete(wispFrame.streamID);
                     });
@@ -77,7 +81,9 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
                             host = (await dns.resolve(connectFrame.hostname))[0];
                             iplevel = net.isIP(host); // can't be 0 now
                         } catch (e) {
-                            console.error("Failure while trying to resolve hostname " + connectFrame.hostname + " with error: " + e);
+                            if (logging) {
+                                console.error("Failure while trying to resolve hostname " + connectFrame.hostname + " with error: " + e);
+                            }
                             return; // we're done here, ignore doing anything to this message now.
                         }
                     }
@@ -97,7 +103,9 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
 
                     // Handle errors
                     client.on('error', (err) => {
-                        console.error('UDP error:', err);
+                        if (logging) {
+                            console.error('UDP error:', err);
+                        }
                         ws.send(FrameParsers.closePacketMaker(wispFrame, 0x03));
                         connections.delete(wispFrame.streamID);
                         client.close();
@@ -125,7 +133,9 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
                     const connectFrame = stream.connectFrame; // Retrieve the connectFrame object
                     stream.client.send(wispFrame.payload, connectFrame.port, connectFrame.hostname, (err: Error | null) => {
                         if (err) {
-                            console.error('UDP send error:', err);
+                            if (logging) {
+                                console.error('UDP send error:', err);
+                            }
                             ws.send(FrameParsers.closePacketMaker(wispFrame, 0x03));
                             stream.client.close();
                             connections.delete(wispFrame.streamID);
@@ -151,8 +161,10 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
             }
         } catch (e) {
             ws.close(); // something went SUPER wrong, like its probably not even a wisp connection
-            console.error("WISP incoming message handler error: ");
-            console.error(e);
+            if (logging) {
+                console.error("WISP incoming message handler error: ");
+                console.error(e);
+            }
 
             // cleanup
             for (const { client } of connections.values()) {
