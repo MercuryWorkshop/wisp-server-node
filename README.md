@@ -12,6 +12,8 @@ httpServer.on('upgrade', (req, socket, head) => {
 })
 ```
 
+To see more backend examples of how to implement wisp-server-node, check the [examples](./examples/)
+
 ### Migrating while dual wielding bare-server-node 🤺
 
 If you're migrating from bare server but want to retain both, simply use
