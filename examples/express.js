@@ -13,7 +13,7 @@ server.on("upgrade", (req, socket, head) => {
 let port = 8080;
 
 server.on("listening", () => {
-  
+  console.log(`Server is running on ${port}`)
 });
 
 server.listen({
