@@ -16,6 +16,11 @@
     ],
     "keywords": [],
     "author": "",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/MercuryWorkshop/wisp-server-node.git"
+    },
+    "homepage": "https://github.com/MercuryWorkshop/wisp-server-node#readme",
     "license": "AGPL-3.0-only",
     "devDependencies": {
         "@types/ws": "^8.5.10",
