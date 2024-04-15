@@ -95,7 +95,13 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
 
                     // Create a new UDP socket
                     const client = dgram.createSocket(iplevel === 6 ? "udp6" : "udp4");
+                    //@ts-expect-error stupid workaround
+                    client.connected = false;
 
+                    client.on('connect', () => {
+                        //@ts-expect-error really dumb workaround
+                        client.connected = true
+                    });
                     // Handle incoming UDP data
                     client.on('message', (data, rinfo) => {
                         ws.send(FrameParsers.dataPacketMaker(wispFrame, data));
@@ -137,8 +143,7 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
                                 console.error('UDP send error:', err);
                             }
                             ws.send(FrameParsers.closePacketMaker(wispFrame, 0x03));
-                            //@ts-expect-error
-                            if (!err.errno == -13) {
+                            if (stream.client.connected) {
                                 stream.client.close();
                             }
                             connections.delete(wispFrame.streamID);
