@@ -72,6 +72,10 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
                         ws.send(FrameParsers.closePacketMaker(wispFrame, 0x03)); // 0x03 in the WISP protocol is defined as network error
                         connections.delete(wispFrame.streamID);
                     });
+                    client.on("close", function() {
+                        ws.send(FrameParsers.closePacketMaker(wispFrame, 0x02));
+                        connections.delete(wispFrame.streamID);
+                    })
                 } else if (connectFrame.streamType === STREAM_TYPE.UDP) {
                     let iplevel = net.isIP(connectFrame.hostname); // Can be 0: DNS NAME, 4: IPv4, 6: IPv6
                     let host = connectFrame.hostname;
@@ -116,6 +120,12 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
                         connections.delete(wispFrame.streamID);
                         client.close();
                     });
+
+                    client.on("close", function() {
+                        ws.send(FrameParsers.closePacketMaker(wispFrame, 0x02));
+                        connections.delete(wispFrame.streamID);
+                        client.close();
+                    })
 
                     // Store the UDP socket and connectFrame in the connections map
                     connections.set(wispFrame.streamID, {
