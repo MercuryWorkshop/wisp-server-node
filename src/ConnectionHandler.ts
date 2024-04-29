@@ -7,17 +7,25 @@ import FrameParsers, { continuePacketMaker, dataPacketMaker } from "./Packets";
 import { handleWsProxy } from "./wsproxy";
 import dns from "node:dns/promises";
 
+console.warn("wisp-server-node is now no longer maintained.");
+
 const wss = new WebSocket.Server({ noServer: true });
-const defaultOptions: WispOptions = { logging: true }
+const defaultOptions: WispOptions = { logging: true };
 // Accepts either routeRequest(ws) or routeRequest(request, socket, head) like bare
-export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMessage, socket?: Socket, head?: Buffer, options: WispOptions = defaultOptions) {
+export async function routeRequest(
+    wsOrIncomingMessage: WebSocket | IncomingMessage,
+    socket?: Socket,
+    head?: Buffer,
+    options: WispOptions = defaultOptions,
+) {
     options = Object.assign({}, defaultOptions, options);
 
     if (!(wsOrIncomingMessage instanceof WebSocket) && socket && head) {
         // Wsproxy is handled here because if we're just passed the websocket then we don't even know it's URL
         // Compatibility with bare like "handle upgrade" syntax
         wss.handleUpgrade(wsOrIncomingMessage, socket as Socket, head, (ws: WebSocket): void => {
-            if (!wsOrIncomingMessage.url?.endsWith("/")) { // if a URL ends with / then its not a wsproxy connection, its wisp
+            if (!wsOrIncomingMessage.url?.endsWith("/")) {
+                // if a URL ends with / then its not a wsproxy connection, its wisp
                 handleWsProxy(ws, wsOrIncomingMessage.url!);
                 return;
             }
@@ -72,21 +80,27 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
                         ws.send(FrameParsers.closePacketMaker(wispFrame, 0x03)); // 0x03 in the WISP protocol is defined as network error
                         connections.delete(wispFrame.streamID);
                     });
-                    client.on("close", function() {
+                    client.on("close", function () {
                         ws.send(FrameParsers.closePacketMaker(wispFrame, 0x02));
                         connections.delete(wispFrame.streamID);
-                    })
+                    });
                 } else if (connectFrame.streamType === STREAM_TYPE.UDP) {
                     let iplevel = net.isIP(connectFrame.hostname); // Can be 0: DNS NAME, 4: IPv4, 6: IPv6
                     let host = connectFrame.hostname;
 
-                    if (iplevel === 0) { // is DNS
+                    if (iplevel === 0) {
+                        // is DNS
                         try {
                             host = (await dns.resolve(connectFrame.hostname))[0];
                             iplevel = net.isIP(host); // can't be 0 now
                         } catch (e) {
                             if (options.logging) {
-                                console.error("Failure while trying to resolve hostname " + connectFrame.hostname + " with error: " + e);
+                                console.error(
+                                    "Failure while trying to resolve hostname " +
+                                        connectFrame.hostname +
+                                        " with error: " +
+                                        e,
+                                );
                             }
                             return; // we're done here, ignore doing anything to this message now.
                         }
@@ -102,36 +116,36 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
                     //@ts-expect-error stupid workaround
                     client.connected = false;
 
-                    client.on('connect', () => {
+                    client.on("connect", () => {
                         //@ts-expect-error really dumb workaround
-                        client.connected = true
+                        client.connected = true;
                     });
                     // Handle incoming UDP data
-                    client.on('message', (data, rinfo) => {
+                    client.on("message", (data, rinfo) => {
                         ws.send(FrameParsers.dataPacketMaker(wispFrame, data));
                     });
 
                     // Handle errors
-                    client.on('error', (err) => {
+                    client.on("error", (err) => {
                         if (options.logging) {
-                            console.error('UDP error:', err);
+                            console.error("UDP error:", err);
                         }
                         ws.send(FrameParsers.closePacketMaker(wispFrame, 0x03));
                         connections.delete(wispFrame.streamID);
                         client.close();
                     });
 
-                    client.on("close", function() {
+                    client.on("close", function () {
                         ws.send(FrameParsers.closePacketMaker(wispFrame, 0x02));
                         connections.delete(wispFrame.streamID);
                         client.close();
-                    })
+                    });
 
                     // Store the UDP socket and connectFrame in the connections map
                     connections.set(wispFrame.streamID, {
                         client,
                         buffer: 127,
-                        connectFrame: connectFrame // Store the connectFrame object
+                        connectFrame: connectFrame, // Store the connectFrame object
                     });
                 }
             }
@@ -147,18 +161,23 @@ export async function routeRequest(wsOrIncomingMessage: WebSocket | IncomingMess
                     }
                 } else if (stream && stream.client instanceof dgram.Socket) {
                     const connectFrame = stream.connectFrame; // Retrieve the connectFrame object
-                    stream.client.send(wispFrame.payload, connectFrame.port, connectFrame.hostname, (err: Error | null) => {
-                        if (err) {
-                            if (options.logging) {
-                                console.error('UDP send error:', err);
+                    stream.client.send(
+                        wispFrame.payload,
+                        connectFrame.port,
+                        connectFrame.hostname,
+                        (err: Error | null) => {
+                            if (err) {
+                                if (options.logging) {
+                                    console.error("UDP send error:", err);
+                                }
+                                ws.send(FrameParsers.closePacketMaker(wispFrame, 0x03));
+                                if (stream.client.connected) {
+                                    stream.client.close();
+                                }
+                                connections.delete(wispFrame.streamID);
                             }
-                            ws.send(FrameParsers.closePacketMaker(wispFrame, 0x03));
-                            if (stream.client.connected) {
-                                stream.client.close();
-                            }
-                            connections.delete(wispFrame.streamID);
-                        }
-                    });
+                        },
+                    );
                 }
             }
 

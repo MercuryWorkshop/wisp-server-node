@@ -15,4 +15,4 @@ export enum STREAM_TYPE {
 }
 export type WispOptions = {
     logging?: boolean;
-} 
+};
