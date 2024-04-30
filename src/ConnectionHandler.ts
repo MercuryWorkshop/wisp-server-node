@@ -138,7 +138,6 @@ export async function routeRequest(
                     client.on("close", function () {
                         ws.send(FrameParsers.closePacketMaker(wispFrame, 0x02));
                         connections.delete(wispFrame.streamID);
-                        client.close();
                     });
 
                     // Store the UDP socket and connectFrame in the connections map
