@@ -1,8 +1,5 @@
 # wisp-server-node
 
-> [!WARNING]  
-> Wisp server node is now no longer maintained, please switch to wisp-js when it is available
-
 A [wisp protocol](https://github.com/MercuryWorkshop/wisp-protocol) server implementation, written in NodeJS.
 
 ### Usage ✨
