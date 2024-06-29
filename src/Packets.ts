@@ -1,4 +1,4 @@
-import { STREAM_TYPE, CONNECT_TYPE, WispFrame } from "./Types";
+import { CONNECT_TYPE, WispFrame, ExtensionInfo } from "./Types";
 
 export function wispFrameParser(data: Buffer): WispFrame {
     const uint8arrayView = new Uint8Array(data);
@@ -52,10 +52,66 @@ export function dataPacketMaker(wispFrame: WispFrame, data: Buffer) {
     return Buffer.concat([Buffer.from(dataPacketHeader.buffer), data]);
 }
 
+export function infoPacketMaker(extensions: ExtensionInfo[]) {
+    const infoPacket = new DataView(new Uint8Array(9).buffer); // 1 byte for type, 2 for version, 4 for extensions length, 2 for extensions data
+    infoPacket.setUint8(0, CONNECT_TYPE.INFO);
+    infoPacket.setUint8(1, 2); // Major Version
+    infoPacket.setUint8(2, 0); // Minor Version
+
+    let extensionDataLength = 0;
+    for (const extension of extensions) {
+        extensionDataLength += extension.payload.byteLength + 5; // 5 bytes for header
+    }
+
+    infoPacket.setUint32(3, extensionDataLength, true); // length of the extensions array
+
+    // Generate the extensions data
+    let extensionsData = new Uint8Array(extensionDataLength);
+    let currentPosition = 0;
+    for (const extension of extensions) {
+        extensionsData.set([extension.id], currentPosition);
+        currentPosition += 1;
+
+        const payloadLengthView = new DataView(new Uint8Array(4).buffer);
+        payloadLengthView.setUint32(0, extension.payload.byteLength, true);
+        extensionsData.set(new Uint8Array(payloadLengthView.buffer), currentPosition);
+        currentPosition += 4;
+
+        extensionsData.set(extension.payload, currentPosition);
+        currentPosition += extension.payload.byteLength;
+    }
+
+    return Buffer.concat([Buffer.from(infoPacket.buffer), extensionsData]);
+}
+
+export function authPacketMaker(success: boolean) {
+    const authPacket = new DataView(new Uint8Array(2).buffer); // 1 byte for type, 1 for success
+    authPacket.setUint8(0, CONNECT_TYPE.INFO);
+    authPacket.setUint8(1, success ? 1 : 0);
+    return authPacket.buffer;
+}
+
+export function authPacketParser(payload: Uint8Array) {
+    const dataView = new DataView(payload.buffer);
+    const usernameLength = dataView.getUint8(0);
+    const passwordLength = dataView.getUint16(1, true);
+    const usernameString = new TextDecoder("utf8").decode(dataView.buffer.slice(3, 3 + usernameLength));
+    const passwordString = new TextDecoder("utf8").decode(
+        dataView.buffer.slice(3 + usernameLength, 3 + usernameLength + passwordLength),
+    );
+    return {
+        username: usernameString,
+        password: passwordString,
+    };
+}
+
 export default {
     wispFrameParser,
     connectPacketParser,
     continuePacketMaker,
     closePacketMaker,
     dataPacketMaker,
+    infoPacketMaker,
+    authPacketMaker,
+    authPacketParser,
 };

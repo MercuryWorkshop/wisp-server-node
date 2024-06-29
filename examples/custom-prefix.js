@@ -5,15 +5,24 @@ const wisp = require("wisp-server-node");
 const httpServer = http.createServer();
 
 httpServer.on("upgrade", (req, socket, head) => {
-    // please include thr trailing slash
-    if (req.url.endsWith("/wisp/")) wisp.routeRequest(req, socket, head);
-    else socket.end();
+  // please include the trailing slash
+  if (req.url.endsWith("/wisp/")) {
+    wisp.routeRequest(req, socket, head, {
+      logging: true,
+      auth: false,
+      throttle: true,
+      throttleLimit: 5 * 1024 * 1024, // throttle limit: 5 MB
+      throttleInterval: 5000, // throttle check interval: 5 seconds
+    });
+  } else {
+    socket.end();
+  }
 });
 
 httpServer.on("listening", () => {
-    console.log("HTTP server listening");
+  console.log("HTTP server listening");
 });
 
 httpServer.listen({
-    port: 8080,
+  port: 8080,
 });
