@@ -1,4 +1,4 @@
-import { STREAM_TYPE, CONNECT_TYPE, WispFrame } from "./Types";
+import { CONNECT_TYPE, WispFrame } from "./Types";
 
 export function wispFrameParser(data: Buffer): WispFrame {
     const uint8arrayView = new Uint8Array(data);
