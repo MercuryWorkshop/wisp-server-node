@@ -7,8 +7,6 @@ import FrameParsers, { continuePacketMaker, dataPacketMaker } from "./Packets";
 import { handleWsProxy } from "./wsproxy";
 import dns from "node:dns/promises";
 
-console.warn("wisp-server-node is now no longer maintained.");
-
 const wss = new WebSocket.Server({ noServer: true });
 const defaultOptions: WispOptions = { logging: true };
 // Accepts either routeRequest(ws) or routeRequest(request, socket, head) like bare
