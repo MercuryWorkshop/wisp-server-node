@@ -9,6 +9,8 @@ import dns from "node:dns/promises";
 
 // console.warn("wisp-server-node is now no longer maintained.");
 
+=======
+>>>>>>> 833feaf (undeprecate wisp-server-node)
 const wss = new WebSocket.Server({ noServer: true });
 const defaultOptions: WispOptions = {
     logging: true,
