@@ -111,6 +111,7 @@ export async function routeRequest(
 
                     // Create a new UDP socket
                     const client = dgram.createSocket(iplevel === 6 ? "udp6" : "udp4");
+                    client.connect(connectFrame.port, host);
                     //@ts-expect-error stupid workaround
                     client.connected = false;
 
@@ -142,7 +143,6 @@ export async function routeRequest(
                     connections.set(wispFrame.streamID, {
                         client,
                         buffer: 127,
-                        connectFrame: connectFrame, // Store the connectFrame object
                     });
                 }
             }
@@ -157,24 +157,18 @@ export async function routeRequest(
                         ws.send(continuePacketMaker(wispFrame, stream.buffer));
                     }
                 } else if (stream && stream.client instanceof dgram.Socket) {
-                    const connectFrame = stream.connectFrame; // Retrieve the connectFrame object
-                    stream.client.send(
-                        wispFrame.payload,
-                        connectFrame.port,
-                        connectFrame.hostname,
-                        (err: Error | null) => {
-                            if (err) {
-                                if (options.logging) {
-                                    console.error("UDP send error:", err);
-                                }
-                                ws.send(FrameParsers.closePacketMaker(wispFrame, 0x03));
-                                if (stream.client.connected) {
-                                    stream.client.close();
-                                }
-                                connections.delete(wispFrame.streamID);
+                    stream.client.send(wispFrame.payload, undefined, undefined, (err: Error | null) => {
+                        if (err) {
+                            if (options.logging) {
+                                console.error("UDP send error:", err);
                             }
-                        },
-                    );
+                            ws.send(FrameParsers.closePacketMaker(wispFrame, 0x03));
+                            if (stream.client.connected) {
+                                stream.client.close();
+                            }
+                            connections.delete(wispFrame.streamID);
+                        }
+                    });
                 }
             }
 
