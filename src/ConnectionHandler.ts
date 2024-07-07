@@ -85,6 +85,50 @@ export async function routeRequest(
                     if (options.logging) {
                         console.log("Client successfully authenticated");
                     }
+<<<<<<< HEAD
+=======
+
+                    // iplevel is now guaranteed to be 6 or 4, fingers crossed, so we can define the UDP type now
+                    if (iplevel != 4 && iplevel != 6) {
+                        return; // something went wrong.. neither ipv4 nor ipv6
+                    }
+
+                    // Create a new UDP socket
+                    const client = dgram.createSocket(iplevel === 6 ? "udp6" : "udp4");
+                    client.connect(connectFrame.port, host);
+                    //@ts-expect-error stupid workaround
+                    client.connected = false;
+
+                    client.on("connect", () => {
+                        //@ts-expect-error really dumb workaround
+                        client.connected = true;
+                    });
+                    // Handle incoming UDP data
+                    client.on("message", (data, rinfo) => {
+                        ws.send(FrameParsers.dataPacketMaker(wispFrame, data));
+                    });
+
+                    // Handle errors
+                    client.on("error", (err) => {
+                        if (options.logging) {
+                            console.error("UDP error:", err);
+                        }
+                        ws.send(FrameParsers.closePacketMaker(wispFrame, 0x03));
+                        connections.delete(wispFrame.streamID);
+                        client.close();
+                    });
+
+                    client.on("close", function () {
+                        ws.send(FrameParsers.closePacketMaker(wispFrame, 0x02));
+                        connections.delete(wispFrame.streamID);
+                    });
+
+                    // Store the UDP socket and connectFrame in the connections map
+                    connections.set(wispFrame.streamID, {
+                        client,
+                        buffer: 127,
+                    });
+>>>>>>> 70fd7f6 (fix: redo udp code)
                 }
             } else {
                 // Routing
@@ -92,6 +136,7 @@ export async function routeRequest(
                     // CONNECT frame data
                     const connectFrame = FrameParsers.connectPacketParser(wispFrame.payload);
 
+<<<<<<< HEAD
                     if (connectFrame.streamType === STREAM_TYPE.TCP) {
                         // Initialize and register Socket that will handle this stream
                         const client = new net.Socket();
@@ -283,6 +328,32 @@ export async function routeRequest(
                                 // Remove the stream from the connections map AFTER closing
                                 connections.delete(stream.streamID);
                             }
+=======
+            if (wispFrame.type === CONNECT_TYPE.DATA) {
+                const stream = connections.get(wispFrame.streamID);
+                if (stream && stream.client instanceof net.Socket) {
+                    stream.client.write(wispFrame.payload);
+                    stream.buffer--;
+                    if (stream.buffer === 0) {
+                        stream.buffer = 127;
+                        ws.send(continuePacketMaker(wispFrame, stream.buffer));
+                    }
+                } else if (stream && stream.client instanceof dgram.Socket) {
+                    stream.client.send(wispFrame.payload, undefined, undefined, (err: Error | null) => {
+                        if (err) {
+                            if (options.logging) {
+                                console.error("UDP send error:", err);
+                            }
+                            ws.send(FrameParsers.closePacketMaker(wispFrame, 0x03));
+                            if (stream.client.connected) {
+                                stream.client.close();
+                            }
+                            connections.delete(wispFrame.streamID);
+                        }
+                    });
+                }
+            }
+>>>>>>> 70fd7f6 (fix: redo udp code)
 
                             stream.lastThrottleCheck = now;
                         }
