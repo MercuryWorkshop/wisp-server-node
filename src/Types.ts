@@ -17,6 +17,7 @@ export enum STREAM_TYPE {
     UDP = 0x02,
 }
 
+<<<<<<< HEAD
 export type WispOptions = {
     logging?: boolean;
     auth?: boolean;
@@ -28,4 +29,15 @@ export type WispOptions = {
 export type ExtensionInfo = {
     id: number;
     payload: Uint8Array;
+=======
+export enum LOG_LEVEL {
+    DEBUG = 0,
+    INFO = 1,
+    WARN = 2,
+    ERROR = 3,
+    NONE = 4,
+}
+export type WispOptions = {
+    logLevel: LOG_LEVEL;
+>>>>>>> be54a11 (update to use new logger)
 };
