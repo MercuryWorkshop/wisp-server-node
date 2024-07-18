@@ -13,6 +13,14 @@ export enum STREAM_TYPE {
     TCP = 0x01,
     UDP = 0x02,
 }
+
+export enum LOG_LEVEL {
+    DEBUG = 0,
+    INFO = 1,
+    WARN = 2,
+    ERROR = 3,
+    NONE = 4,
+}
 export type WispOptions = {
-    logging?: boolean;
+    logLevel: LOG_LEVEL;
 };
