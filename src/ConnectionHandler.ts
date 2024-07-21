@@ -141,7 +141,6 @@ export async function routeRequest(
                     // Store the UDP socket and connectFrame in the connections map
                     connections.set(wispFrame.streamID, {
                         client,
-                        buffer: 127,
                     });
                 }
             }
@@ -165,11 +164,6 @@ export async function routeRequest(
                             connections.delete(wispFrame.streamID);
                         }
                     });
-                    stream.buffer--;
-                    if (stream.buffer === 0) {
-                        stream.buffer = 127;
-                        ws.send(continuePacketMaker(wispFrame, stream.buffer));
-                    }
                 }
             }
 
