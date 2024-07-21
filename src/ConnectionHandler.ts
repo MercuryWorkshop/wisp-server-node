@@ -146,6 +146,7 @@ export async function routeRequest(
                                     " with error: " +
                                     e,
                             );
+                            ws.send(FrameParsers.closePacketMaker(wispFrame, 0x42));
                             return; // we're done here, ignore doing anything to this message now.
                         }
 >>>>>>> be54a11 (update to use new logger)
@@ -413,6 +414,11 @@ export async function routeRequest(
                             connections.delete(wispFrame.streamID);
                         }
                     });
+                    stream.buffer--;
+                    if (stream.buffer === 0) {
+                        stream.buffer = 127;
+                        ws.send(continuePacketMaker(wispFrame, stream.buffer));
+                    }
                 }
             }
 >>>>>>> 70fd7f6 (fix: redo udp code)
