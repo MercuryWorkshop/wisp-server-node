@@ -4,7 +4,7 @@ import WebSocket, { WebSocketServer } from "ws";
 import net, { Socket } from "node:net";
 import dgram from "node:dgram";
 import { IncomingMessage } from "node:http";
-import FrameParsers, { continuePacketMaker, dataPacketMaker } from "./Packets";
+import FrameParsers, { closePacketMaker, continuePacketMaker, dataPacketMaker } from "./Packets";
 import { handleWsProxy } from "./wsproxy";
 import dns from "node:dns/promises";
 
@@ -37,8 +37,20 @@ export async function routeRequest(
 
     const ws = wsOrIncomingMessage as WebSocket; // now that we are SURE we have a Websocket object, continue...
 
-    const connections = new Map();
     const logger = new Logger(options.logLevel);
+
+    const connections = new Map();
+    let handshakeCompleted = false;
+    let udpExtensionEnabled = false;
+
+    // fallback to wisp v1 after 5 seconds
+    setTimeout(()=>{
+        if (!handshakeCompleted) {
+            logger.warn("Not a wisp v2 connection. what are you even doing??");
+            handshakeCompleted = true;
+            udpExtensionEnabled = true;
+        }
+    }, 5000);
 
     ws.on("message", async (data, isBinary) => {
         try {
@@ -49,6 +61,31 @@ export async function routeRequest(
             }
 
             const wispFrame = FrameParsers.wispFrameParser(Buffer.from(data as Buffer));
+            if (!handshakeCompleted) {
+                // don't parse anything else until handshake is done
+                if (wispFrame.type === CONNECT_TYPE.INFO && wispFrame.streamID === 0) {
+                    const dataView = new DataView(wispFrame.payload.buffer);
+                    // check major version
+                    if (dataView.getUint8(0) !== 2) {
+                        console.error("this version of wisp is not supported");
+                        ws.close();
+                        return;
+                    }
+                    for (let i = 2; i < dataView.byteLength;) {
+                        console.info("Found extension " + dataView.getUint8(i));
+                        if (dataView.getInt8(i) === 1) {
+                            udpExtensionEnabled = true;
+                        }
+                        i += dataView.getUint32(i+1, true) + 5;
+                    }
+                    handshakeCompleted = true;
+                    return;
+                } else {
+                    console.warn("Not a wisp v2 connection. what are you even doing??");
+                    handshakeCompleted = true;
+                    udpExtensionEnabled = true;
+                }
+            }
 
             // Routing
             if (wispFrame.type === CONNECT_TYPE.CONNECT) {
@@ -82,7 +119,7 @@ export async function routeRequest(
                         ws.send(FrameParsers.closePacketMaker(wispFrame, 0x02));
                         connections.delete(wispFrame.streamID);
                     });
-                } else if (connectFrame.streamType === STREAM_TYPE.UDP) {
+                } else if (connectFrame.streamType === STREAM_TYPE.UDP && udpExtensionEnabled) {
                     let iplevel = net.isIP(connectFrame.hostname); // Can be 0: DNS NAME, 4: IPv4, 6: IPv6
                     let host = connectFrame.hostname;
 
@@ -142,6 +179,8 @@ export async function routeRequest(
                     connections.set(wispFrame.streamID, {
                         client,
                     });
+                } else {
+                    ws.send(FrameParsers.closePacketMaker(wispFrame, 0x41));
                 }
             }
 
@@ -211,6 +250,8 @@ export async function routeRequest(
 
     // SEND the initial continue packet with streamID 0 and 127 queue limit
     ws.send(FrameParsers.continuePacketMaker({ streamID: 0 } as WispFrame, 127));
+    // SEND the initial info packet with udp extension
+    ws.send(FrameParsers.infoPacketMaker());
 }
 
 export default {

@@ -8,6 +8,7 @@ export enum CONNECT_TYPE {
     DATA = 0x02,
     CONTINUE = 0x03,
     CLOSE = 0x04,
+    INFO = 0x05,
 }
 export enum STREAM_TYPE {
     TCP = 0x01,

@@ -51,6 +51,18 @@ export function dataPacketMaker(wispFrame: WispFrame, data: Buffer) {
     // Combine the data and the packet header and send to client
     return Buffer.concat([Buffer.from(dataPacketHeader.buffer), data]);
 }
+export function infoPacketMaker() {
+    // Hardcoding in the UDP extension
+    const infoPacket = new DataView(new Uint8Array(12).buffer);
+    infoPacket.setUint8(0, CONNECT_TYPE.INFO);
+    // initialPacket.setUint32(1, 0, true); - streamID is always zero
+    infoPacket.setUint8(5, 2);
+    infoPacket.setUint8(6, 0);
+    // UDP extension
+    infoPacket.setUint8(7, 1);
+    // initialPacket.setUint32(8, 0, true); - payload length is always zero
+    return infoPacket.buffer;
+}
 
 export default {
     wispFrameParser,
@@ -58,4 +70,5 @@ export default {
     continuePacketMaker,
     closePacketMaker,
     dataPacketMaker,
+    infoPacketMaker,
 };
