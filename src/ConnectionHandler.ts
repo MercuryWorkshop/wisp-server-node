@@ -1,4 +1,5 @@
-import { STREAM_TYPE, CONNECT_TYPE, WispFrame, WispOptions } from "./Types";
+import { STREAM_TYPE, CONNECT_TYPE, LOG_LEVEL, WispFrame, WispOptions } from "./Types";
+import { Logger } from "./Logger";
 import WebSocket, { WebSocketServer } from "ws";
 import net, { Socket } from "node:net";
 import dgram from "node:dgram";
@@ -8,7 +9,7 @@ import { handleWsProxy } from "./wsproxy";
 import dns from "node:dns/promises";
 
 const wss = new WebSocket.Server({ noServer: true });
-const defaultOptions: WispOptions = { logging: true };
+const defaultOptions: WispOptions = { logLevel: LOG_LEVEL.INFO };
 // Accepts either routeRequest(ws) or routeRequest(request, socket, head) like bare
 export async function routeRequest(
     wsOrIncomingMessage: WebSocket | IncomingMessage,
@@ -36,6 +37,8 @@ export async function routeRequest(
 
     const ws = wsOrIncomingMessage as WebSocket; // now that we are SURE we have a Websocket object, continue...
 
+    const logger = new Logger(options.logLevel);
+
     const connections = new Map();
     let handshakeCompleted = false;
     let udpExtensionEnabled = false;
@@ -43,7 +46,7 @@ export async function routeRequest(
     // fallback to wisp v1 after 5 seconds
     setTimeout(()=>{
         if (!handshakeCompleted) {
-            console.warn("Not a wisp v2 connection. what are you even doing??");
+            logger.warn("Not a wisp v2 connection. what are you even doing??");
             handshakeCompleted = true;
             udpExtensionEnabled = true;
         }
@@ -53,9 +56,7 @@ export async function routeRequest(
         try {
             // Ensure that the incoming data is a valid WebSocket message
             if (!Buffer.isBuffer(data) && !(data instanceof ArrayBuffer)) {
-                if (options.logging) {
-                    console.error("Invalid WebSocket message data");
-                }
+                logger.error("Invalid WebSocket message data");
                 return;
             }
 
@@ -107,10 +108,10 @@ export async function routeRequest(
                     });
 
                     // Close stream if there is some network error
-                    client.on("error", function () {
-                        if (options.logging) {
-                            console.error("Something went wrong");
-                        }
+                    client.on("error", function (err) {
+                        logger.error(
+                            `An error occured in the connection to ${connectFrame.hostname} (${wispFrame.streamID}) with the message ${err.message}`,
+                        );
                         ws.send(FrameParsers.closePacketMaker(wispFrame, 0x03)); // 0x03 in the WISP protocol is defined as network error
                         connections.delete(wispFrame.streamID);
                     });
@@ -128,14 +129,13 @@ export async function routeRequest(
                             host = (await dns.resolve(connectFrame.hostname))[0];
                             iplevel = net.isIP(host); // can't be 0 now
                         } catch (e) {
-                            if (options.logging) {
-                                console.error(
-                                    "Failure while trying to resolve hostname " +
-                                        connectFrame.hostname +
-                                        " with error: " +
-                                        e,
-                                );
-                            }
+                            logger.error(
+                                "Failure while trying to resolve hostname " +
+                                    connectFrame.hostname +
+                                    " with error: " +
+                                    e,
+                            );
+                            ws.send(FrameParsers.closePacketMaker(wispFrame, 0x42));
                             return; // we're done here, ignore doing anything to this message now.
                         }
                     }
@@ -162,9 +162,9 @@ export async function routeRequest(
 
                     // Handle errors
                     client.on("error", (err) => {
-                        if (options.logging) {
-                            console.error("UDP error:", err);
-                        }
+                        logger.error(
+                            `An error occured in the connection to ${connectFrame.hostname} (${wispFrame.streamID}) with the message ${err.message}`,
+                        );
                         ws.send(FrameParsers.closePacketMaker(wispFrame, 0x03));
                         connections.delete(wispFrame.streamID);
                         client.close();
@@ -178,7 +178,6 @@ export async function routeRequest(
                     // Store the UDP socket and connectFrame in the connections map
                     connections.set(wispFrame.streamID, {
                         client,
-                        buffer: 127,
                     });
                 } else {
                     ws.send(FrameParsers.closePacketMaker(wispFrame, 0x41));
@@ -197,9 +196,6 @@ export async function routeRequest(
                 } else if (stream && stream.client instanceof dgram.Socket) {
                     stream.client.send(wispFrame.payload, undefined, undefined, (err: Error | null) => {
                         if (err) {
-                            if (options.logging) {
-                                console.error("UDP send error:", err);
-                            }
                             ws.send(FrameParsers.closePacketMaker(wispFrame, 0x03));
                             if (stream.client.connected) {
                                 stream.client.close();
@@ -212,11 +208,9 @@ export async function routeRequest(
 
             if (wispFrame.type === CONNECT_TYPE.CLOSE) {
                 // its joever
-                if (options.logging) {
-                    console.log(
-                        "Client decided to terminate with reason " + new DataView(wispFrame.payload.buffer).getUint8(0),
-                    );
-                }
+                logger.log(
+                    "Client decided to terminate with reason " + new DataView(wispFrame.payload.buffer).getUint8(0),
+                );
                 const stream = connections.get(wispFrame.streamID);
                 if (stream && stream.client instanceof net.Socket) {
                     stream.client.destroy();
@@ -227,10 +221,7 @@ export async function routeRequest(
             }
         } catch (e) {
             ws.close(); // something went SUPER wrong, like its probably not even a wisp connection
-            if (options.logging) {
-                console.error("WISP incoming message handler error: ");
-                console.error(e);
-            }
+            logger.error(`WISP incoming message handler error: `, e);
 
             // cleanup
             for (const { client } of connections.values()) {
@@ -246,9 +237,7 @@ export async function routeRequest(
 
     // Close all open sockets when the WebSocket connection is closed
     ws.on("close", (code, reason) => {
-        if (options.logging) {
-            console.log(`WebSocket connection closed with code ${code} and reason: ${reason}`);
-        }
+        logger.debug(`WebSocket connection closed with code ${code} and reason: ${reason}`);
         for (const { client } of connections.values()) {
             if (client instanceof net.Socket) {
                 client.destroy();
