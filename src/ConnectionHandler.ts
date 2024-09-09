@@ -7,6 +7,7 @@ import { IncomingMessage } from "node:http";
 import FrameParsers, { continuePacketMaker, dataPacketMaker } from "./Packets";
 import { handleWsProxy } from "./wsproxy";
 import dns from "node:dns/promises";
+import { checkErrorCode } from "./Utils";
 
 const wss = new WebSocket.Server({ noServer: true });
 const defaultOptions: WispOptions = { logLevel: LOG_LEVEL.INFO };
@@ -75,9 +76,10 @@ export async function routeRequest(
                         logger.error(
                             `An error occured in the connection to ${connectFrame.hostname} (${wispFrame.streamID}) with the message ${err.message}`,
                         );
-                        ws.send(FrameParsers.closePacketMaker(wispFrame, 0x03)); // 0x03 in the WISP protocol is defined as network error
+                        ws.send(FrameParsers.closePacketMaker(wispFrame, checkErrorCode(err)));
                         connections.delete(wispFrame.streamID);
                     });
+                    
                     client.on("close", function () {
                         ws.send(FrameParsers.closePacketMaker(wispFrame, 0x02));
                         connections.delete(wispFrame.streamID);
@@ -128,7 +130,7 @@ export async function routeRequest(
                         logger.error(
                             `An error occured in the connection to ${connectFrame.hostname} (${wispFrame.streamID}) with the message ${err.message}`,
                         );
-                        ws.send(FrameParsers.closePacketMaker(wispFrame, 0x03));
+                        ws.send(FrameParsers.closePacketMaker(wispFrame, checkErrorCode(err)));
                         connections.delete(wispFrame.streamID);
                         client.close();
                     });
