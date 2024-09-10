@@ -81,8 +81,10 @@ export async function routeRequest(
                     });
                     
                     client.on("close", function () {
-                        ws.send(FrameParsers.closePacketMaker(wispFrame, 0x02));
-                        connections.delete(wispFrame.streamID);
+                        if (connections.get(wispFrame.streamID)) {
+                            ws.send(FrameParsers.closePacketMaker(wispFrame, 0x02));
+                            connections.delete(wispFrame.streamID);
+                        }
                     });
                 } else if (connectFrame.streamType === STREAM_TYPE.UDP) {
                     let iplevel = net.isIP(connectFrame.hostname); // Can be 0: DNS NAME, 4: IPv4, 6: IPv6
@@ -136,8 +138,10 @@ export async function routeRequest(
                     });
 
                     client.on("close", function () {
-                        ws.send(FrameParsers.closePacketMaker(wispFrame, 0x02));
-                        connections.delete(wispFrame.streamID);
+                        if (connections.get(wispFrame.streamID)) {
+                            ws.send(FrameParsers.closePacketMaker(wispFrame, 0x02));
+                            connections.delete(wispFrame.streamID);
+                        }
                     });
 
                     // Store the UDP socket and connectFrame in the connections map
