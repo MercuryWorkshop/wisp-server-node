@@ -163,7 +163,7 @@ export async function routeRequest(
                 } else if (stream && stream.client instanceof dgram.Socket) {
                     stream.client.send(wispFrame.payload, undefined, undefined, (err: Error | null) => {
                         if (err) {
-                            ws.send(FrameParsers.closePacketMaker(wispFrame, 0x03));
+                            ws.send(FrameParsers.closePacketMaker(wispFrame, checkErrorCode(err)));
                             if (stream.client.connected) {
                                 stream.client.close();
                             }
