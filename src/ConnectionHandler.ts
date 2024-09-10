@@ -1,12 +1,12 @@
-import { STREAM_TYPE, CONNECT_TYPE, LOG_LEVEL, WispFrame, WispOptions } from "./Types";
-import { Logger } from "./Logger";
+import { IncomingMessage } from "node:http";
 import WebSocket, { WebSocketServer } from "ws";
 import net, { Socket } from "node:net";
-import dgram from "node:dgram";
-import { IncomingMessage } from "node:http";
-import FrameParsers, { continuePacketMaker, dataPacketMaker } from "./Packets";
-import { handleWsProxy } from "./wsproxy";
 import dns from "node:dns/promises";
+import dgram from "node:dgram";
+import FrameParsers from "./Packets";
+import { STREAM_TYPE, PACKET_TYPE, LOG_LEVEL, WispFrame, WispOptions } from "./Types";
+import { Logger } from "./Logger";
+import { handleWsProxy } from "./wsproxy";
 import { checkErrorCode } from "./Utils";
 
 const wss = new WebSocket.Server({ noServer: true });
@@ -52,7 +52,7 @@ export async function routeRequest(
             const wispFrame = FrameParsers.wispFrameParser(Buffer.from(data as Buffer));
 
             // Routing
-            if (wispFrame.type === CONNECT_TYPE.CONNECT) {
+            if (wispFrame.type === PACKET_TYPE.CONNECT) {
                 // CONNECT frame data
                 const connectFrame = FrameParsers.connectPacketParser(wispFrame.payload);
 
@@ -151,14 +151,14 @@ export async function routeRequest(
                 }
             }
 
-            if (wispFrame.type === CONNECT_TYPE.DATA) {
+            if (wispFrame.type === PACKET_TYPE.DATA) {
                 const stream = connections.get(wispFrame.streamID);
                 if (stream && stream.client instanceof net.Socket) {
                     stream.client.write(wispFrame.payload);
                     stream.buffer--;
                     if (stream.buffer === 0) {
                         stream.buffer = 127;
-                        ws.send(continuePacketMaker(wispFrame, stream.buffer));
+                        ws.send(FrameParsers.continuePacketMaker(wispFrame, stream.buffer));
                     }
                 } else if (stream && stream.client instanceof dgram.Socket) {
                     stream.client.send(wispFrame.payload, undefined, undefined, (err: Error | null) => {
@@ -173,7 +173,7 @@ export async function routeRequest(
                 }
             }
 
-            if (wispFrame.type === CONNECT_TYPE.CLOSE) {
+            if (wispFrame.type === PACKET_TYPE.CLOSE) {
                 // its joever
                 logger.log(
                     "Client decided to terminate with reason " + new DataView(wispFrame.payload.buffer).getUint8(0),

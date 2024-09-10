@@ -1,9 +1,9 @@
 export type WispFrame = {
-    type: CONNECT_TYPE;
+    type: PACKET_TYPE;
     streamID: number;
     payload: Uint8Array;
 };
-export enum CONNECT_TYPE {
+export enum PACKET_TYPE {
     CONNECT = 0x01,
     DATA = 0x02,
     CONTINUE = 0x03,
