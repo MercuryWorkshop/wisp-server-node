@@ -1,7 +1,7 @@
 {
     "name": "wisp-server-node",
     "version": "1.1.4",
-    "type": "commonjs",
+    "type": "module",
     "description": "",
     "scripts": {
         "start": "node dist/createServer.js",

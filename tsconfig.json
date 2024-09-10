@@ -4,6 +4,8 @@
         "lib": ["ESNext"],
         "target": "ESNext",
         "module": "Node16",
+        "allowImportingTsExtensions": true,
+        "emitDeclarationOnly": true,
         "moduleResolution": "Node16",
         "strict": true,
         "stripInternal": true,

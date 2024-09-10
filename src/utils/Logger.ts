@@ -1,4 +1,4 @@
-import { LOG_LEVEL } from "./Types";
+import { LOG_LEVEL } from "../Types.ts";
 
 export class Logger {
     logLevel: number;

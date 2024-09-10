@@ -3,11 +3,11 @@ import WebSocket, { WebSocketServer } from "ws";
 import net, { Socket } from "node:net";
 import dns from "node:dns/promises";
 import dgram from "node:dgram";
-import FrameParsers from "./Packets";
-import { STREAM_TYPE, PACKET_TYPE, LOG_LEVEL, WispFrame, WispOptions } from "./Types";
-import { Logger } from "./Logger";
-import { handleWsProxy } from "./wsproxy";
-import { checkErrorCode } from "./Utils";
+import FrameParsers from "./Packets.ts";
+import { STREAM_TYPE, PACKET_TYPE, LOG_LEVEL, WispFrame, WispOptions } from "./Types.ts";
+import { Logger } from "./utils/Logger.ts";
+import { handleWsProxy } from "./wsproxy.ts";
+import { checkErrorCode } from "./utils/Error.ts";
 
 const wss = new WebSocket.Server({ noServer: true });
 const defaultOptions: WispOptions = { logLevel: LOG_LEVEL.INFO };
@@ -108,7 +108,7 @@ export async function routeRequest(
                     }
 
                     // iplevel is now guaranteed to be 6 or 4, fingers crossed, so we can define the UDP type now
-                    if (iplevel != 4 && iplevel != 6) {
+                    if (iplevel !== 4 && iplevel !== 6) {
                         return; // something went wrong.. neither ipv4 nor ipv6
                     }
 
