@@ -1,18 +1,36 @@
 {
     "compilerOptions": {
-        "outDir": "dist",
-        "lib": ["ESNext"],
-        "target": "ESNext",
         "module": "Node16",
-        "allowImportingTsExtensions": true,
-        "emitDeclarationOnly": true,
-        "moduleResolution": "Node16",
-        "strict": true,
-        "stripInternal": true,
+        // project options
+        "lib": ["ESNext"],
+        "outDir": "dist",
+        "removeComments": true,
+        "target": "ESNext",
+
+        // Module resolution
         "esModuleInterop": true,
-        "declaration": true,
+        "moduleResolution": "Node16",
+        
+        // Source Map
         "sourceMap": true,
-        "resolveJsonModule": false
+
+        // Strict Checks
+        "alwaysStrict": true, // Ensures that your files are parsed in the ECMAScript strict mode, and emit “use strict” for each source file.
+        "allowUnreachableCode": false, // pick up dead code paths
+        "noImplicitAny": true, // In some cases where no type annotations are present, TypeScript will fall back to a type of any for a variable when it cannot infer the type.
+        "strictNullChecks": true, // When strictNullChecks is true, null and undefined have their own distinct types and you’ll get a type error if you try to use them where a concrete value is expected.
+        "allowJs": true,
+        // Linter Checks
+        "noImplicitReturns": true,
+        "noUnusedLocals": false, // Report errors on unused local variables.
+        "noUnusedParameters": false, // Report errors on unused parameters in functions
+        "declaration": true,
+        "checkJs": false,
+        "skipLibCheck": true,
+
+        "resolveJsonModule": false,
+        "emitDeclarationOnly": true,
+        "allowImportingTsExtensions": true
     },
     "include": ["src"]
 }
