@@ -8,6 +8,7 @@ const httpServer = http.createServer().listen(process.env.PORT || 3000);
 
 httpServer.on("upgrade", (req, socket, head) => {
     wisp.routeRequest(req, socket as Socket, head, {
-        logLevel: LOG_LEVEL.DEBUG
+        logLevel: LOG_LEVEL.DEBUG,
+        pingInterval: 30
     });
 });

@@ -23,4 +23,5 @@ export enum LOG_LEVEL {
 }
 export type WispOptions = {
     logLevel: LOG_LEVEL;
+    pingInterval: number;
 };

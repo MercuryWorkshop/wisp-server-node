@@ -10,7 +10,7 @@ import { handleWsProxy } from "./wsproxy.ts";
 import { checkErrorCode } from "./utils/Error.ts";
 
 const wss = new WebSocket.Server({ noServer: true });
-const defaultOptions: WispOptions = { logLevel: LOG_LEVEL.INFO };
+const defaultOptions: WispOptions = { logLevel: LOG_LEVEL.INFO, pingInterval: 30 };
 // Accepts either routeRequest(ws) or routeRequest(request, socket, head) like bare
 export async function routeRequest(
     wsOrIncomingMessage: WebSocket | IncomingMessage,
@@ -40,8 +40,12 @@ export async function routeRequest(
 
     const connections = new Map();
     const logger = new Logger(options.logLevel);
+    const pingInterval = setInterval(() => {
+        logger.debug(`sending websocket ping`);
+        ws.ping();
+    }, options.pingInterval * 1000);
 
-    ws.on("message", async (data, isBinary) => {
+    ws.on("message", async (data: any) => {
         try {
             // Ensure that the incoming data is a valid WebSocket message
             if (!Buffer.isBuffer(data) && !(data instanceof ArrayBuffer)) {
@@ -203,7 +207,7 @@ export async function routeRequest(
     });
 
     // Close all open sockets when the WebSocket connection is closed
-    ws.on("close", (code, reason) => {
+    ws.on("close", (code: number, reason: string) => {
         logger.debug(`WebSocket connection closed with code ${code} and reason: ${reason}`);
         for (const { client } of connections.values()) {
             if (client instanceof net.Socket) {
@@ -213,6 +217,7 @@ export async function routeRequest(
             }
         }
         connections.clear();
+        clearTimeout(pingInterval);
     });
 
     // SEND the initial continue packet with streamID 0 and 127 queue limit

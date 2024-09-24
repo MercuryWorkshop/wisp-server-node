@@ -41,7 +41,8 @@ export function closePacketMaker(wispFrame: WispFrame, reason: number) {
 
     return closePacket.buffer;
 }
-export function dataPacketMaker(wispFrame: WispFrame, data: Buffer) {
+// the data is any because i want to build this shit without typescript screaming at me
+export function dataPacketMaker(wispFrame: WispFrame, data: any) {
     // Only function here that returns a node buffer instead ArrayBufferLike
     // Packet header creation
     const dataPacketHeader = new DataView(new Uint8Array(5).buffer);
