@@ -5,7 +5,7 @@
         "lib": ["ESNext"],
         "outDir": "dist",
         "removeComments": true,
-        "target": "ESNext",
+        "target": "ES6",
 
         // Module resolution
         "esModuleInterop": true,
