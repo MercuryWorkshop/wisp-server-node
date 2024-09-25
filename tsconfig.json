@@ -29,8 +29,7 @@
         "skipLibCheck": true,
 
         "resolveJsonModule": false,
-        "emitDeclarationOnly": true,
-        "allowImportingTsExtensions": true
+        "emitDeclarationOnly": false
     },
     "include": ["src"]
 }

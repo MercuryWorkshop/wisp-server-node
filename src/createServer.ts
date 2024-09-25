@@ -1,7 +1,6 @@
-import { WebSocketServer } from "ws";
-import wisp from "./ConnectionHandler.ts";
+import wisp from "./ConnectionHandler.js";
 import http from "node:http";
-import { LOG_LEVEL } from "./Types.ts";
+import { LOG_LEVEL } from "./Types.js";
 import net, { Socket } from "node:net";
 
 const httpServer = http.createServer().listen(process.env.PORT || 3000);

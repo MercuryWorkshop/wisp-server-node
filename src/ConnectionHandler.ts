@@ -3,13 +3,13 @@ import WebSocket, { WebSocketServer } from "ws";
 import net, { Socket } from "node:net";
 import dns from "node:dns/promises";
 import dgram from "node:dgram";
-import FrameParsers from "./Packets.ts";
-import { STREAM_TYPE, PACKET_TYPE, LOG_LEVEL, WispFrame, WispOptions } from "./Types.ts";
-import { Logger } from "./utils/Logger.ts";
-import { handleWsProxy } from "./wsproxy.ts";
-import { checkErrorCode } from "./utils/Error.ts";
+import FrameParsers from "./Packets.js";
+import { STREAM_TYPE, PACKET_TYPE, LOG_LEVEL, WispFrame, WispOptions } from "./Types.js";
+import { Logger } from "./utils/Logger.js";
+import { handleWsProxy } from "./wsproxy.js";
+import { checkErrorCode } from "./utils/Error.js";
 
-const wss = new WebSocket.Server({ noServer: true });
+const wss = new WebSocketServer({ noServer: true });
 const defaultOptions: WispOptions = { logLevel: LOG_LEVEL.INFO, pingInterval: 30 };
 // Accepts either routeRequest(ws) or routeRequest(request, socket, head) like bare
 export async function routeRequest(

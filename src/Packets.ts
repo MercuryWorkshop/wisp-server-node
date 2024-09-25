@@ -1,4 +1,4 @@
-import { PACKET_TYPE, WispFrame } from "./Types.ts";
+import { PACKET_TYPE, WispFrame } from "./Types.js";
 
 export function wispFrameParser(data: Buffer): WispFrame {
     const uint8arrayView = new Uint8Array(data);
