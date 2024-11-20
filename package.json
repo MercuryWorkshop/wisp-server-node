@@ -8,7 +8,7 @@
         "build": "tsc",
         "dev": "tsc --watch",
         "pretty": "npx prettier -w *",
-        "prepare": "npm run build"
+        "prepack": "npm run build"
     },
     "main": "dist/ConnectionHandler.js",
     "types": "dist/ConnectionHandler.d.ts",
